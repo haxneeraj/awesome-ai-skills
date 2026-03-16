@@ -5,11 +5,11 @@ Review Laravel applications and enforce high code quality standards.
 Focus areas:
 
 Naming conventions
-Class size
-Service design
-Duplicate logic
-Dependency Injection
-Maintainability
+Class size limits
+Service responsibilities
+Code duplication
+Dependency injection quality
+Method complexity
 
 Supported stack:
 
@@ -22,192 +22,189 @@ TailwindCSS
 
 # Naming Conventions
 
-Classes, methods, and variables must use meaningful names.
+Classes must follow descriptive and consistent naming.
 
 Examples:
 
-Good:
+Actions:
 
-```
 CreateOrderAction
-ProcessPaymentService
-SendWelcomeEmailJob
-```
+RegisterUserAction
 
-Bad:
+Services:
 
-```
-DoStuff
-Helper
-Manager2
-TestClass
-```
+OrderService
+PaymentService
 
-Variables must describe their purpose.
+Drivers:
 
-Good:
+StripeDriver
+RazorpayDriver
 
-```
-$orderAmount
-$userBalance
-$paymentProvider
-```
+Interfaces:
 
-Bad:
+PaymentDriverInterface
 
-```
-$a
-$data1
-$temp
-```
+DTOs:
+
+CreateOrderDTO
+
+Validation:
+
+CreateOrderValidation
+
+Forbidden naming:
+
+DataAction
+HelperService
+ManagerService
+
+Names must clearly describe the responsibility.
 
 ---
 
-# Class Responsibility Rule
+# Method Naming
 
-Each class must follow **Single Responsibility Principle (SRP)**.
-
-A class should have one responsibility.
-
-Example:
+Methods must describe behavior clearly.
 
 Correct:
 
-```
-CreateOrderAction
-PaymentService
-EmailNotificationService
-```
-
-Incorrect:
-
-```
-OrderManager
-SystemHelper
-ApplicationService
+```php
+createOrder()
+calculateCommission()
+sendPaymentRequest()
 ```
 
-Classes must not combine multiple unrelated responsibilities.
+Forbidden:
+
+```php
+process()
+handle()
+run()
+```
+
+unless the method is inside a job or queue worker.
 
 ---
 
-# Large Class Detection
+# Class Size Limits
 
-Classes must not exceed recommended size.
+Classes must remain small and focused.
 
 Recommended limits:
 
-Maximum methods: 20
-Maximum lines: 400
+Controllers / Livewire components:
 
-Large classes are difficult to maintain and test.
+≤ 200 lines
 
-Violation example:
+Actions:
 
-```
-app/Services/OrderService.php:1200 lines
-```
+≤ 150 lines
 
-Suggested fix:
+Services:
 
-Split into smaller services.
+≤ 300 lines
+
+Large classes indicate poor separation of concerns.
 
 ---
 
 # God Service Detection
 
-Services must not handle multiple domains.
-
-Example violation:
-
-```
-UserService
-   createUser()
-   processPayment()
-   sendEmail()
-   generateReport()
-```
-
-Correct separation:
-
-```
-UserService
-PaymentService
-EmailService
-ReportService
-```
-
-Each service must focus on a single domain.
-
----
-
-# Method Length Rules
-
-Methods should remain small and readable.
-
-Recommended:
-
-Maximum 40 lines.
+Services must not contain too many responsibilities.
 
 Violation example:
 
-```
-public function processOrder()
-{
-   // 150 lines of logic
-}
+```php
+UserService
 ```
 
-Suggested fix:
+doing:
 
-Extract smaller methods.
+* authentication
+* payments
+* notifications
+* reporting
 
-Example:
+Instead split into:
 
-```
-validateOrder()
-calculateTotals()
-processPayment()
-saveOrder()
-```
+AuthService
+PaymentService
+NotificationService
+
+---
+
+# Method Length
+
+Methods should remain short.
+
+Recommended:
+
+≤ 40 lines
+
+Large methods indicate hidden responsibilities.
+
+Split large methods into smaller methods.
 
 ---
 
 # Duplicate Logic Detection
 
-Repeated logic must be extracted into reusable functions.
+Repeated logic must be extracted.
 
-Example violation:
+Incorrect:
 
+```php
+$total = $amount * $percent / 100;
 ```
-$commission = ($amount * $percent) / 100;
-```
 
-Repeated in multiple places.
+repeated across multiple classes.
 
-Correct solution:
+Correct:
 
-Use helper:
+Move to helper.
 
-```
-calculate_commission($amount,$percent)
+Example:
+
+```php
+calculate_commission($amount, $percent)
 ```
 
 Location:
 
-```
 app/Helpers/helpers.php
-```
+
+---
+
+# Reusable Logic Placement
+
+Use correct location depending on logic type.
+
+Pure calculations:
+
+helpers.php
+
+Shared behavior:
+
+Traits
+
+Domain logic:
+
+Services
+
+Application orchestration:
+
+Actions
 
 ---
 
 # Dependency Injection Rules
 
-Classes must use constructor injection.
+Dependencies must be injected via constructor.
 
 Correct:
 
-```
+```php
 public function __construct(
     protected PaymentService $paymentService
 ) {}
@@ -215,217 +212,207 @@ public function __construct(
 
 Forbidden:
 
-```
+```php
 $service = new PaymentService();
 ```
 
-Direct instantiation reduces testability.
+or
+
+```php
+app(PaymentService::class)
+```
+
+inside services.
 
 ---
 
-# Service Container Usage
+# Circular Dependency Prevention
 
-Use Laravel container when resolving classes.
+Services must not depend on each other in circular patterns.
 
-Example:
+Incorrect:
 
-```
-app(CreateOrderAction::class)->execute($data);
-```
+OrderService → PaymentService
+PaymentService → OrderService
 
-Avoid manual object creation.
-
----
-
-# Interface Usage
-
-External integrations must use interfaces.
-
-Correct:
-
-```
-PaymentDriverInterface
-SmsDriverInterface
-EmailDriverInterface
-```
-
-Drivers must implement interfaces.
-
-Violation example:
-
-Directly using provider SDK inside service.
+Break cycles using actions or domain events.
 
 ---
 
 # Trait Usage
 
-Traits should only contain reusable behavior.
+Traits must contain reusable behavior.
 
 Examples:
 
-```
 HasTransactions
 LogsActivity
-HandlesUploads
-```
 
-Traits must not contain domain logic.
+Traits must NOT contain:
+
+* business rules
+* database queries
+
+Traits should be small and focused.
 
 ---
 
-# Helper Usage
+# Livewire Component Size
 
-Common calculations must exist in helpers.
+Livewire components must remain lightweight.
 
-Location:
+Responsibilities:
 
-```
-app/Helpers/helpers.php
-```
-
-Allowed:
-
-calculations
-formatting
-utility functions
+UI state
+validation
+calling actions
 
 Forbidden:
 
-database queries
-API calls
+* domain logic
+* complex calculations
 
----
+Example correct usage:
 
-# Method Naming
-
-Methods must clearly describe their behavior.
-
-Good:
-
-```
-createOrder()
-processPayment()
-calculateCommission()
-```
-
-Bad:
-
-```
-handle()
-run()
-executeProcess()
+```php
+public function save()
+{
+    app(CreateOrderAction::class)->execute($this->form);
+}
 ```
 
 ---
 
-# Return Type Rules
+# Blade Template Quality
 
-Methods should use return types when possible.
+Blade templates must remain simple.
+
+Forbidden:
+
+```php
+@php
+$total = $order->items->sum(...)
+@endphp
+```
+
+Logic must be moved to:
+
+View Models
+Services
+Livewire components.
+
+---
+
+# Long Parameter Lists
+
+Methods must avoid too many parameters.
+
+Violation:
+
+```php
+createOrder($user,$product,$price,$currency,$discount,$tax,$shipping)
+```
+
+Use DTO instead.
+
+Correct:
+
+```php
+createOrder(CreateOrderDTO $dto)
+```
+
+---
+
+# Large Switch Statements
+
+Large switch blocks should be replaced with polymorphism.
+
+Incorrect:
+
+```php
+switch($gateway) {
+ case 'stripe':
+ case 'razorpay':
+ case 'paypal':
+}
+```
+
+Correct:
+
+Driver architecture.
 
 Example:
 
-```
-public function calculateTotal(): float
-```
-
-Improves readability and static analysis.
+PaymentManager → StripeDriver.
 
 ---
 
-# File Organization
+# Magic Numbers
 
-Project structure must remain consistent.
+Avoid hardcoded values.
 
-Recommended:
+Incorrect:
 
-```
-app
- ├ Livewire
- ├ Actions
- ├ Services
- ├ Drivers
- ├ DTO
- ├ Validation
- ├ Helpers
- ├ Traits
- └ Models
+```php
+if ($amount > 10000)
 ```
 
-Files must not be placed in incorrect directories.
+Correct:
+
+```php
+if ($amount > config('payment.limit'))
+```
 
 ---
 
-# Cyclomatic Complexity
+# Configuration Usage
 
-Methods with too many conditions reduce readability.
+Values should come from configuration files.
 
-Violation example:
+Correct:
 
-```
-if (...) {
-}
-elseif (...) {
-}
-elseif (...) {
-}
-elseif (...) {
-}
-elseif (...) {
-}
+```php
+config('payment.driver')
 ```
 
-Suggested fix:
+Forbidden:
 
-Extract smaller methods or use strategy pattern.
+```php
+$driver = 'stripe';
+```
 
 ---
 
-# Dead Code Detection
+# Action Complexity
 
-Remove unused:
+Actions must orchestrate services only.
 
-methods
-imports
-variables
+Forbidden inside actions:
 
-Example violation:
+* heavy business logic
+* database queries
 
-```
-use App\Services\PaymentService;
-```
+Correct pattern:
 
-but never used.
+Entry → Action → Service.
 
 ---
 
-# Comments vs Clean Code
+# Service Responsibilities
 
-Avoid unnecessary comments explaining obvious code.
+Services must contain domain logic only.
 
-Bad:
+Services must not:
 
-```
- // add two numbers
- $total = $a + $b;
-```
-
-Good code should be self-explanatory.
-
----
-
-# Testability Rules
-
-Code must be testable.
-
-Avoid static calls when possible.
-
-Prefer dependency injection.
+* render views
+* handle HTTP requests
+* manage UI state.
 
 ---
 
 # Output Format
 
-Return issues using:
+Return violations using:
 
 ```
 file:line rule message
@@ -434,11 +421,11 @@ file:line rule message
 Example:
 
 ```
-app/Services/UserService.php:120 quality Large class detected
+app/Services/UserService.php:120 quality God service detected
 
-app/Services/OrderService.php:55 quality God service detected
+app/Livewire/Admin/Orders/CreateOrder.php:35 quality Business logic inside component
 
-app/Actions/CreateOrderAction.php:18 quality Direct dependency instantiation detected
+app/Services/PaymentService.php:42 quality Dependency instantiated manually
 
-app/Livewire/Admin/Orders/ListOrders.php:45 quality Poor variable naming
+app/Actions/CreateOrderAction.php:30 quality Method too long
 ```
