@@ -1,5 +1,7 @@
 # Laravel Enterprise AI Skills
 
+![Laravel Enterprise AI Skills](banner.png)
+
 AI skill pack designed for modern Laravel development.
 
 This repository provides a set of structured **AI coding skills** that enforce best practices when using AI coding tools.
